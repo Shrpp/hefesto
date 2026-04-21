@@ -1,0 +1,20 @@
+[package]
+name        = "hefesto"
+version     = "1.0.0"
+edition     = "2021"
+description = "Double envelope encryption — AES-256-GCM + Argon2id for multi-tenant applications"
+license     = "MIT"
+keywords    = ["encryption", "aes-gcm", "argon2", "multi-tenant", "crypto"]
+categories  = ["cryptography"]
+readme      = "README.md"
+
+[dependencies]
+aes-gcm   = { version = "0.10", features = ["aes", "std"] }
+argon2    = "0.5"
+rand      = { version = "0.8", features = ["getrandom"] }
+sha2      = "0.10"
+hmac      = "0.12"
+base64    = "0.22"
+hex       = "0.4"
+zeroize   = { version = "1.7", features = ["derive"] }
+thiserror = "1"
