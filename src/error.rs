@@ -22,6 +22,9 @@ pub enum HefestoError {
 
     #[error("password hashing failed: {0}")]
     PasswordHashFailed(String),
+
+    #[error("invalid key: {0}")]
+    InvalidKey(String),
 }
 
 pub type Result<T> = std::result::Result<T, HefestoError>;
