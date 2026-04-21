@@ -4,8 +4,8 @@ use sha2::Sha256;
 type HmacSha256 = Hmac<Sha256>;
 
 pub(crate) fn hash_for_lookup(value: &str, tenant_key: &str) -> String {
-    let mut mac = HmacSha256::new_from_slice(tenant_key.as_bytes())
-        .expect("HMAC accepts any key length");
+    let mut mac =
+        HmacSha256::new_from_slice(tenant_key.as_bytes()).expect("HMAC accepts any key length");
     mac.update(value.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }

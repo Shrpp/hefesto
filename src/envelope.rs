@@ -1,9 +1,9 @@
-use base64::{Engine, engine::general_purpose::STANDARD};
 use crate::{
-    cipher::{encrypt_raw, decrypt_raw},
-    kdf::{derive_key, generate_salt},
+    cipher::{decrypt_raw, encrypt_raw},
     error::{HefestoError, Result},
+    kdf::{derive_key, generate_salt},
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
 
 const SALT_SIZE: usize = 16;
 const MIN_PAYLOAD_BYTES: usize = SALT_SIZE * 2 + 12 + 12 + 1;
@@ -45,8 +45,12 @@ pub(crate) fn envelope_decrypt(
         });
     }
 
-    let salt_1: [u8; 16] = bytes[0..16].try_into().map_err(|_| HefestoError::InvalidPayload)?;
-    let salt_2: [u8; 16] = bytes[16..32].try_into().map_err(|_| HefestoError::InvalidPayload)?;
+    let salt_1: [u8; 16] = bytes[0..16]
+        .try_into()
+        .map_err(|_| HefestoError::InvalidPayload)?;
+    let salt_2: [u8; 16] = bytes[16..32]
+        .try_into()
+        .map_err(|_| HefestoError::InvalidPayload)?;
     let layer_2 = &bytes[32..];
 
     let key_2 = derive_key(master_key, &salt_2)?;

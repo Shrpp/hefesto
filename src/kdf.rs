@@ -1,7 +1,7 @@
+use crate::error::{HefestoError, Result};
 use argon2::Argon2;
 use rand::RngCore;
 use zeroize::Zeroizing;
-use crate::error::{HefestoError, Result};
 
 const ARGON2_MEMORY_KB: u32 = 64 * 1024;
 const ARGON2_ITERATIONS: u32 = 3;

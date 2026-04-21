@@ -1,7 +1,10 @@
-use aes_gcm::{Aes256Gcm, Key, Nonce, aead::{Aead, KeyInit}};
+use crate::error::{HefestoError, Result};
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Key, Nonce,
+};
 use rand::RngCore;
 use zeroize::Zeroizing;
-use crate::error::{HefestoError, Result};
 
 pub(crate) fn generate_nonce() -> [u8; 12] {
     let mut nonce = [0u8; 12];
