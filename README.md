@@ -23,7 +23,7 @@ Double envelope encryption for multi-tenant applications. Encrypts field values 
 
 ```toml
 [dependencies]
-hefesto = "0.1.0"
+hefesto = "1.0.0"
 ```
 
 ```rust
