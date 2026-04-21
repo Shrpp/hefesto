@@ -1,6 +1,6 @@
 [package]
 name        = "hefesto"
-version     = "1.0.2"
+version     = "1.0.3"
 edition     = "2021"
 description = "Double envelope encryption — AES-256-GCM + Argon2id for multi-tenant applications"
 license     = "MIT"

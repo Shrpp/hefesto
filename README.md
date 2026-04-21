@@ -1,6 +1,6 @@
 # Hefesto
 
-[![CI](https://github.com/lu-jl/hefesto/actions/workflows/ci.yml/badge.svg)](https://github.com/lu-jl/hefesto/actions/workflows/ci.yml)
+[![CI](https://github.com/Shrpp/hefesto/actions/workflows/ci.yml/badge.svg)](https://github.com/Shrpp/hefesto/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/hefesto.svg)](https://crates.io/crates/hefesto)
 [![docs.rs](https://docs.rs/hefesto/badge.svg)](https://docs.rs/hefesto)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -13,7 +13,7 @@ Built on AES-256-GCM + Argon2id. No key management — bring your own keys.
 
 ```toml
 [dependencies]
-hefesto = "1.0.2"
+hefesto = "1.0.3"
 ```
 
 ## Quickstart
