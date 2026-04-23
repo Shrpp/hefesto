@@ -30,8 +30,8 @@
 //! ```rust
 //! use hefesto::{encrypt, decrypt, hash_password, verify_password, hash_for_lookup};
 //!
-//! let tenant_key = "per_tenant_secret_key";
-//! let master_key = "global_master_key_32";
+//! let tenant_key = "per_tenant_secret_key_32bytes___";
+//! let master_key = "global_master_key_32bytes_______";
 //!
 //! // Encrypt and decrypt a sensitive value
 //! let ciphertext = encrypt("user@example.com", tenant_key, master_key).unwrap();
@@ -43,14 +43,20 @@
 //! assert!(verify_password("s3cr3t", &hash));
 //!
 //! // Deterministic lookup token — same value + same tenant_key → same hash
-//! let token = hash_for_lookup("user@example.com", tenant_key);
-//! assert_eq!(token, hash_for_lookup("user@example.com", tenant_key));
+//! let token = hash_for_lookup("user@example.com", tenant_key).unwrap();
+//! assert_eq!(token, hash_for_lookup("user@example.com", tenant_key).unwrap());
 //! ```
 //!
 //! ## Minimum key length
 //!
-//! Both `tenant_key` and `master_key` must be at least **8 bytes**. Shorter
-//! keys are rejected with [`HefestoError::InvalidKey`].
+//! Both `tenant_key` and `master_key` must be at least **16 bytes**. Shorter
+//! keys are rejected with [`HefestoError::InvalidKey`]. Keys of 32+ bytes are
+//! strongly recommended in production.
+//!
+//! ## Payload versioning
+//!
+//! The ciphertext payload begins with a version byte (`0x02`). Payloads from
+//! hefesto v1.x (version byte `0x01`) are not compatible and will be rejected.
 //!
 //! ## Feature flags
 //!
@@ -68,7 +74,11 @@ mod password;
 pub use error::HefestoError;
 use error::Result;
 
-const MIN_KEY_LEN: usize = 8;
+/// Minimum byte length enforced on both `tenant_key` and `master_key`.
+///
+/// 16 bytes gives 128 bits of key material before Argon2id hardening. Keys of
+/// 32+ bytes (256 bits) are strongly recommended in production.
+const MIN_KEY_LEN: usize = 16;
 
 fn validate_key(key: &str, name: &str) -> Result<()> {
     if key.len() < MIN_KEY_LEN {
@@ -109,13 +119,14 @@ fn validate_key(key: &str, name: &str) -> Result<()> {
 /// # Examples
 ///
 /// ```rust
-/// let ct = hefesto::encrypt("secret", "tenant_secret_key", "master_secret_k").unwrap();
+/// let ct = hefesto::encrypt("secret", "tenant_secret_key_32", "master_secret_key_32").unwrap();
 /// assert!(!ct.is_empty());
 ///
 /// // Non-deterministic: two calls with the same inputs produce different ciphertexts
-/// let ct2 = hefesto::encrypt("secret", "tenant_secret_key", "master_secret_k").unwrap();
+/// let ct2 = hefesto::encrypt("secret", "tenant_secret_key_32", "master_secret_key_32").unwrap();
 /// assert_ne!(ct, ct2);
 /// ```
+#[must_use = "encryption result must be stored or used"]
 pub fn encrypt(value: &str, tenant_key: &str, master_key: &str) -> Result<String> {
     validate_key(tenant_key, "tenant_key")?;
     validate_key(master_key, "master_key")?;
@@ -145,18 +156,19 @@ pub fn encrypt(value: &str, tenant_key: &str, master_key: &str) -> Result<String
 /// # Examples
 ///
 /// ```rust
-/// let ct = hefesto::encrypt("hello", "tenant_secret_key", "master_secret_k").unwrap();
-/// let pt = hefesto::decrypt(&ct, "tenant_secret_key", "master_secret_k").unwrap();
+/// let ct = hefesto::encrypt("hello", "tenant_secret_key_32", "master_secret_key_32").unwrap();
+/// let pt = hefesto::decrypt(&ct, "tenant_secret_key_32", "master_secret_key_32").unwrap();
 /// assert_eq!(pt, "hello");
 /// ```
 ///
 /// Wrong keys are rejected:
 ///
 /// ```rust
-/// let ct = hefesto::encrypt("hello", "tenant_secret_key", "master_secret_k").unwrap();
-/// assert!(hefesto::decrypt(&ct, "wrong_tenant_key_", "master_secret_k").is_err());
-/// assert!(hefesto::decrypt(&ct, "tenant_secret_key", "wrong_master_key_").is_err());
+/// let ct = hefesto::encrypt("hello", "tenant_secret_key_32", "master_secret_key_32").unwrap();
+/// assert!(hefesto::decrypt(&ct, "wrong_tenant_key_32_", "master_secret_key_32").is_err());
+/// assert!(hefesto::decrypt(&ct, "tenant_secret_key_32", "wrong_master_key_32_").is_err());
 /// ```
+#[must_use = "decryption result must be stored or used"]
 pub fn decrypt(ciphertext: &str, tenant_key: &str, master_key: &str) -> Result<String> {
     validate_key(tenant_key, "tenant_key")?;
     validate_key(master_key, "master_key")?;
@@ -182,6 +194,7 @@ pub fn decrypt(ciphertext: &str, tenant_key: &str, master_key: &str) -> Result<S
 /// assert!(hash.starts_with("$argon2id$"));
 /// assert!(hefesto::verify_password("my_password", &hash));
 /// ```
+#[must_use = "password hash result must be stored or used"]
 pub fn hash_password(password: &str) -> Result<String> {
     password::hash_password(password)
 }
@@ -217,24 +230,30 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 /// # Arguments
 ///
 /// * `value`      — plaintext to hash (e.g., an email address)
-/// * `tenant_key` — per-tenant secret that scopes the token
+/// * `tenant_key` — per-tenant secret that scopes the token; minimum 16 bytes
 ///
 /// # Returns
 ///
 /// 64-character lowercase hex string (256-bit HMAC-SHA256 output).
 ///
+/// # Errors
+///
+/// * [`HefestoError::InvalidKey`] — `tenant_key` is shorter than 16 bytes
+///
 /// # Examples
 ///
 /// ```rust
-/// let token = hefesto::hash_for_lookup("user@example.com", "tenant_secret_key");
+/// let token = hefesto::hash_for_lookup("user@example.com", "tenant_secret_key_32").unwrap();
 ///
 /// // Deterministic: same inputs → same token
-/// assert_eq!(token, hefesto::hash_for_lookup("user@example.com", "tenant_secret_key"));
+/// assert_eq!(token, hefesto::hash_for_lookup("user@example.com", "tenant_secret_key_32").unwrap());
 ///
 /// // Tenant-scoped: different tenant → different token
-/// assert_ne!(token, hefesto::hash_for_lookup("user@example.com", "other_tenant_key_"));
+/// assert_ne!(token, hefesto::hash_for_lookup("user@example.com", "other_tenant_key_32_").unwrap());
 /// ```
-pub fn hash_for_lookup(value: &str, tenant_key: &str) -> String {
+#[must_use = "lookup token must be stored or used"]
+pub fn hash_for_lookup(value: &str, tenant_key: &str) -> Result<String> {
+    validate_key(tenant_key, "tenant_key")?;
     lookup::hash_for_lookup(value, tenant_key)
 }
 
@@ -242,8 +261,8 @@ pub fn hash_for_lookup(value: &str, tenant_key: &str) -> String {
 mod integration_tests {
     use super::*;
 
-    const TK: &str = "tenant_key_test";
-    const MK: &str = "master_key_test";
+    const TK: &str = "tenant_key_test_16b";
+    const MK: &str = "master_key_test_16b";
 
     #[test]
     fn full_roundtrip() {
@@ -261,9 +280,9 @@ mod integration_tests {
     #[test]
     fn lookup_roundtrip() {
         let email = "user@example.com";
-        let tenant_key = "tenant_secret";
-        let lookup = hash_for_lookup(email, tenant_key);
-        assert_eq!(lookup, hash_for_lookup(email, tenant_key));
+        let tenant_key = "tenant_secret_16b";
+        let lookup = hash_for_lookup(email, tenant_key).unwrap();
+        assert_eq!(lookup, hash_for_lookup(email, tenant_key).unwrap());
     }
 
     #[test]
@@ -275,35 +294,40 @@ mod integration_tests {
 
     #[test]
     fn lookup_is_deterministic() {
-        let h1 = hash_for_lookup("email", "key");
-        let h2 = hash_for_lookup("email", "key");
+        let h1 = hash_for_lookup("email", "key_at_least_16by").unwrap();
+        let h2 = hash_for_lookup("email", "key_at_least_16by").unwrap();
         assert_eq!(h1, h2);
     }
 
     #[test]
     fn tenant_isolation_in_lookup() {
-        let h1 = hash_for_lookup("same@email.com", "tenant_a_key");
-        let h2 = hash_for_lookup("same@email.com", "tenant_b_key");
+        let h1 = hash_for_lookup("same@email.com", "tenant_a_key_16by").unwrap();
+        let h2 = hash_for_lookup("same@email.com", "tenant_b_key_16by").unwrap();
         assert_ne!(h1, h2);
     }
 
     #[test]
+    fn lookup_short_key_rejected() {
+        assert!(hash_for_lookup("value", "short").is_err());
+        assert!(hash_for_lookup("value", "").is_err());
+    }
+
+    #[test]
     fn decrypt_with_wrong_tenant_key() {
-        let ct = encrypt("data", "correct_tenant_key", MK).unwrap();
-        assert!(decrypt(&ct, "wrong_tenant_key", MK).is_err());
+        let ct = encrypt("data", "correct_tenant_key_", MK).unwrap();
+        assert!(decrypt(&ct, "wrong_tenant_key_xx", MK).is_err());
     }
 
     #[test]
     fn decrypt_with_wrong_master_key() {
-        let ct = encrypt("data", TK, "correct_master_key").unwrap();
-        assert!(decrypt(&ct, TK, "wrong_master_key").is_err());
+        let ct = encrypt("data", TK, "correct_master_key_").unwrap();
+        assert!(decrypt(&ct, TK, "wrong_master_key_xx").is_err());
     }
 
     #[test]
     fn cross_tenant_replay_fails() {
-        // AAD binding: ciphertext from tenant_a must not decrypt as tenant_b
-        let ct = encrypt("secret", "tenant_key_aaa", MK).unwrap();
-        assert!(decrypt(&ct, "tenant_key_bbb", MK).is_err());
+        let ct = encrypt("secret", "tenant_key_aaaaaaa_", MK).unwrap();
+        assert!(decrypt(&ct, "tenant_key_bbbbbbb_", MK).is_err());
     }
 
     #[test]
@@ -315,12 +339,12 @@ mod integration_tests {
 
     #[test]
     fn short_tenant_key_rejected() {
-        assert!(encrypt("data", "short", MK).is_err());
+        assert!(encrypt("data", "tooshort", MK).is_err());
     }
 
     #[test]
     fn short_master_key_rejected() {
-        assert!(encrypt("data", TK, "short").is_err());
+        assert!(encrypt("data", TK, "tooshort").is_err());
     }
 
     #[test]
@@ -345,10 +369,9 @@ mod integration_tests {
 
     #[test]
     fn encrypt_keys_with_special_chars() {
-        let ct = encrypt("data", "key with spaces & symbols!", "master_key_🔑").unwrap();
-        assert_eq!(
-            decrypt(&ct, "key with spaces & symbols!", "master_key_🔑").unwrap(),
-            "data"
-        );
+        let tk = "key with spaces & symbols!";
+        let mk = "master_key_🔑_secure";
+        let ct = encrypt("data", tk, mk).unwrap();
+        assert_eq!(decrypt(&ct, tk, mk).unwrap(), "data");
     }
 }

@@ -1,13 +1,12 @@
 use crate::error::{HefestoError, Result};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, SaltString},
-    Argon2, PasswordHasher, PasswordVerifier,
+    PasswordHasher, PasswordVerifier,
 };
 
 pub(crate) fn hash_password(password: &str) -> Result<String> {
     let salt = SaltString::generate(&mut OsRng);
-
-    Argon2::default()
+    crate::kdf::make_argon2()
         .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())
         .map_err(|e| HefestoError::PasswordHashFailed(e.to_string()))
@@ -18,7 +17,7 @@ pub(crate) fn verify_password(password: &str, hash: &str) -> bool {
         Ok(h) => h,
         Err(_) => return false,
     };
-    Argon2::default()
+    crate::kdf::make_argon2()
         .verify_password(password.as_bytes(), &parsed)
         .is_ok()
 }

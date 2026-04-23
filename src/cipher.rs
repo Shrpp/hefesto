@@ -36,7 +36,13 @@ pub(crate) fn encrypt_raw(
     Ok(output)
 }
 
-pub(crate) fn decrypt_raw(data: &[u8], key: &Zeroizing<[u8; 32]>, aad: &[u8]) -> Result<Vec<u8>> {
+/// Decrypts `data` (nonce ‖ ciphertext) and returns the plaintext wrapped in
+/// [`Zeroizing`] so the buffer is wiped from memory when it is dropped.
+pub(crate) fn decrypt_raw(
+    data: &[u8],
+    key: &Zeroizing<[u8; 32]>,
+    aad: &[u8],
+) -> Result<Zeroizing<Vec<u8>>> {
     if data.len() < 12 {
         return Err(HefestoError::PayloadTooShort {
             expected: 12,
@@ -55,6 +61,7 @@ pub(crate) fn decrypt_raw(data: &[u8], key: &Zeroizing<[u8; 32]>, aad: &[u8]) ->
                 aad,
             },
         )
+        .map(Zeroizing::new)
         .map_err(|_| HefestoError::DecryptionFailed)
 }
 
@@ -64,7 +71,7 @@ mod tests {
     use crate::kdf::derive_key;
 
     fn test_key() -> Zeroizing<[u8; 32]> {
-        derive_key("test_secret", &[1u8; 16]).unwrap()
+        derive_key("test_secret", &[1u8; 32]).unwrap()
     }
 
     #[test]
@@ -73,7 +80,7 @@ mod tests {
         let plaintext = b"hello hefesto";
         let encrypted = encrypt_raw(plaintext, &key, &[]).unwrap();
         let decrypted = decrypt_raw(&encrypted, &key, &[]).unwrap();
-        assert_eq!(decrypted, plaintext);
+        assert_eq!(*decrypted, plaintext[..]);
     }
 
     #[test]
@@ -86,8 +93,8 @@ mod tests {
 
     #[test]
     fn wrong_key_fails() {
-        let key1 = derive_key("key_a", &[1u8; 16]).unwrap();
-        let key2 = derive_key("key_b", &[1u8; 16]).unwrap();
+        let key1 = derive_key("key_a", &[1u8; 32]).unwrap();
+        let key2 = derive_key("key_b", &[1u8; 32]).unwrap();
         let encrypted = encrypt_raw(b"secret", &key1, &[]).unwrap();
         assert!(decrypt_raw(&encrypted, &key2, &[]).is_err());
     }
@@ -118,6 +125,6 @@ mod tests {
         let key = test_key();
         let encrypted = encrypt_raw(b"secret", &key, b"my_tenant").unwrap();
         let decrypted = decrypt_raw(&encrypted, &key, b"my_tenant").unwrap();
-        assert_eq!(decrypted, b"secret");
+        assert_eq!(*decrypted, b"secret"[..]);
     }
 }
