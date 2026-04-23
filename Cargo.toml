@@ -1,12 +1,15 @@
 [package]
-name        = "hefesto"
-version     = "1.0.3"
-edition     = "2021"
-description = "Double envelope encryption — AES-256-GCM + Argon2id for multi-tenant applications"
-license     = "MIT"
-keywords    = ["encryption", "aes-gcm", "argon2", "multi-tenant", "crypto"]
-categories  = ["cryptography"]
-readme      = "README.md"
+name          = "hefesto"
+version       = "1.0.3"
+edition       = "2021"
+description   = "Double envelope encryption — AES-256-GCM + Argon2id for multi-tenant applications"
+license       = "MIT"
+keywords      = ["encryption", "aes-gcm", "argon2", "multi-tenant", "crypto"]
+categories    = ["cryptography"]
+readme        = "README.md"
+documentation = "https://docs.rs/hefesto"
+repository    = "https://github.com/Shrpp/hefesto"
+homepage      = "https://crates.io/crates/hefesto"
 
 [dependencies]
 aes-gcm   = { version = "0.10", features = ["aes", "std"] }
